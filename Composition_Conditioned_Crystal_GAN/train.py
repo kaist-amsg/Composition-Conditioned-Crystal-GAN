@@ -18,7 +18,7 @@ import copy
 from view_atoms_mgmno import *
 import torch.nn.init as init
 from models import *
-
+import random
 
 
 cuda = True if torch.cuda.is_available() else False
@@ -72,6 +72,20 @@ def to_categorical(y, num_columns):
 
     return Variable(FloatTensor(y_cat))
 
+def make_fake_label(fake_c_mg_int,fake_c_mn_int,fake_c_o_int):
+    batch_size = fake_c_mg_int.shape[0]
+    mg_label_fake = [] ; mn_label_fake = [] ; o_label_fake = []
+    for i in range(batch_size):
+        n_mg = fake_c_mg_int[i]+1
+        n_mn = fake_c_mn_int[i]+1
+        n_o = fake_c_o_int[i]+1
+        mg_label_fake_i = np.array([1]*(n_mg) + [0]*(8-n_mg))
+        mn_label_fake_i = np.array([1]*(n_mn) + [0]*(8-n_mn))
+        o_label_fake_i = np.array([1]*(n_o) + [0]*(12-n_o))
+        np.random.shuffle(mg_label_fake_i); np.random.shuffle(mn_label_fake_i); np.random.shuffle(o_label_fake_i)
+        mg_label_fake.append(mg_label_fake_i.reshape(1,8,1)) ; mn_label_fake.append(mn_label_fake_i.reshape(1,8,1)) ; o_label_fake.append(o_label_fake_i.reshape(1,12,1))
+    return np.vstack(mg_label_fake),np.vstack(mn_label_fake),np.vstack(o_label_fake)
+
 def calc_gradient_penalty(netD, real_data, fake_data):
     batch_size = real_data.size(0)
     alpha = torch.rand(batch_size, 1)
@@ -119,7 +133,7 @@ def main():
     parser.add_argument('--load_q', type = str)
     parser.add_argument('--constraint_epoch', type = int, default = 10000)
     parser.add_argument('--gen_dir', type=str, default='./gen_image_cwgan_mgmno/')
-    parser.add_argument('--trainingdata', type=str, default='mgmno_100_2.pickle')
+    parser.add_argument('--trainingdata', type=str, default='mgmno_100.pickle')
     parser.add_argument('--input_dim', type=str, default=512+28+1)
     opt = parser.parse_args()
     print(opt)
@@ -195,8 +209,6 @@ def main():
             batch_size = imgs.shape[0]
             real_imgs = imgs.view(batch_size, 1, 30,3)
             real_imgs_noise = noising(real_imgs)
-			
-            
             mg_label = label[:,:8,:]
             mn_label = label[:,8:16,:]
             o_label = label[:,16:,:]
@@ -252,26 +264,32 @@ def main():
                 z = z.cuda()
                 
                 
-            fake_labels_mg_int = np.random.randint(0, 8, batch_size)
-            fake_labels_mg = to_categorical(fake_labels_mg_int,num_columns = 8)
-            fake_labels_mn_int = np.random.randint(0, 8, batch_size)
-            fake_labels_mn = to_categorical(fake_labels_mn_int,num_columns = 8)
-            fake_labels_o_int = np.random.randint(0,12,batch_size)
-            fake_labels_o = to_categorical(fake_labels_o_int, num_columns = 12)
-            natoms_fake = fake_labels_mg_int + fake_labels_mn_int + fake_labels_o_int + 3
+            fake_c_mg_int = np.random.randint(0, 8, batch_size)
+            fake_c_mg = to_categorical(fake_c_mg_int,num_columns = 8)
+            fake_c_mn_int = np.random.randint(0, 8, batch_size)
+            fake_c_mn = to_categorical(fake_c_mn_int,num_columns = 8)
+            fake_c_o_int = np.random.randint(0,12,batch_size)
+            fake_c_o = to_categorical(fake_c_o_int, num_columns = 12)
+
+            mg_label_fake,mn_label_fake,o_label_fake = make_fake_label(fake_c_mg_int, fake_c_mn_int, fake_c_o_int)
+
+            natoms_fake = fake_c_mg_int + fake_c_mn_int + fake_c_o_int + 3
             natoms_fake = Variable(FloatTensor(natoms_fake)/(28.0)).unsqueeze(-1)
             
             if cuda:
-                fake_labels_mg_int = torch.tensor(fake_labels_mg_int).cuda()
-                fake_labels_mg = fake_labels_mg.cuda()
-                fake_labels_mn_int = torch.tensor(fake_labels_mn_int).cuda()
-                fake_labels_mn = fake_labels_mn.cuda()
-                fake_labels_o_int = torch.tensor(fake_labels_o_int).cuda()
-                fake_labels_o = fake_labels_o.cuda()			
+                fake_c_mg_int = torch.tensor(fake_c_mg_int).cuda()
+                fake_c_mg = fake_c_mg.cuda()
+                mg_label_fake = torch.tensor(mg_label_fake).type(LongTensor).cuda()
+                fake_c_mn_int = torch.tensor(fake_c_mn_int).cuda()
+                fake_c_mn = fake_c_mn.cuda()
+                mn_label_fake = torch.tensor(mn_label_fake).type(LongTensor).cuda()
+                fake_c_o_int = torch.tensor(fake_c_o_int).cuda()
+                fake_c_o = fake_c_o.cuda()			
+                o_label_fake = torch.tensor(o_label_fake).type(LongTensor).cuda()
                 natoms_fake = natoms_fake.cuda()	
                 
                 
-            fake = generator(z,fake_labels_mg,fake_labels_mn,fake_labels_o,natoms_fake)
+            fake = generator(z,fake_c_mg,fake_c_mn,fake_c_o,natoms_fake)
             fake = autograd.Variable(fake)
             fake_feature, D_fake = discriminator(fake)
             
@@ -309,7 +327,6 @@ def main():
             optimizer_Q.step()
             
             
-            
             if j % 5 == 0 :		
                 for p in discriminator.parameters():
                     p.requires_grad = False
@@ -320,23 +337,27 @@ def main():
                 optimizer_Q.zero_grad()
                 
                 z = autograd.Variable(FloatTensor(np.random.normal(0,1,(batch_size, opt.latent_dim))), volatile = True)
-                fake = generator(z,fake_labels_mg,fake_labels_mn,fake_labels_o,natoms_fake)
+                fake = generator(z,fake_c_mg,fake_c_mn,fake_c_o,natoms_fake)
                 fake_feature, G = discriminator(fake)
                 fake_mg_label, fake_mn_label, fake_o_label, fake_mg_cat, fake_mn_cat, fake_o_cat, fake_cell_pred = net_Q(fake)
                 
-                
-                cat_mg_fake = categorical_loss(fake_mg_cat, fake_labels_mg_int)
-                cat_mn_fake = categorical_loss(fake_mn_cat, fake_labels_mn_int)
-                cat_o_fake = categorical_loss(fake_o_cat, fake_labels_o_int)
+                cat_loss_mg_fake = categorical_loss(fake_mg_label , mg_label_fake)
+                cat_loss_mn_fake = categorical_loss(fake_mn_label , mn_label_fake)
+                cat_loss_o_fake = categorical_loss(fake_o_label , o_label_fake)
+
+
+                cat_loss_mg_fake2 = categorical_loss(fake_mg_cat, fake_c_mg_int)
+                cat_loss_mn_fake2 = categorical_loss(fake_mn_cat, fake_c_mn_int)
+                cat_loss_o_fake2 = categorical_loss(fake_o_cat, fake_c_o_int)
                 cell_fake = continuous_loss(fake_cell_pred, natoms_fake)
                 
-                f_mg.append(cat_mg_fake.item())
-                f_mn.append(cat_mn_fake.item())
-                f_o.append(cat_o_fake.item())
+                f_mg.append(cat_loss_mg_fake2.item())
+                f_mn.append(cat_loss_mn_fake2.item())
+                f_o.append(cat_loss_o_fake2.item())
                 f_c.append(cell_fake.item())
                 G = G.mean()
                 
-                cat_loss_fake = cat_mg_fake + cat_mn_fake + cat_o_fake
+                cat_loss_fake = 0.3*(cat_loss_mg_fake + cat_loss_mn_fake + cat_loss_o_fake) + (cat_loss_mg_fake2 + cat_loss_mn_fake2 + cat_loss_o_fake2)
                 cat_loss = cat_loss_fake
                 
                 G_cat = G - cat_loss - 0.1*cell_fake
