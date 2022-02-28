@@ -381,11 +381,9 @@ def main():
         log_string = "[Epoch %d/%d] [Batch %d/%d] [W loss: %f] "  % (epoch, opt.n_epochs, j, len(dataloader),
                                                             sum(w)/len(w)) 
         
-#        log_string += "[real Mg : %f] [real Mn : %f] [real O : %f] [real cell loss : %f] [fake Mg : %f] [fake Mn : %f] [fake O : %f] [fake cell loss : %f]" 
-#	%(sum(r_mg)/len(r_mg), sum(r_mn)/len(r_mn), sum(r_o)/len(r_o),sum(r_c)/len(r_c),sum(f_mg)/len(f_mg), sum(f_mn)/len(f_mn), sum(f_o)/len(f_o), sum(f_c)/len(f_c))
+        log_string += "[real Mg : %f] [real Mn : %f] [real O : %f] [fake Mg : %f] [fake Mn : %f] [fake O : %f]" %(sum(r_mg)/len(r_mg), sum(r_mn)/len(r_mn), sum(r_o)/len(r_o),sum(f_mg)/len(f_mg), sum(f_mn)/len(f_mn), sum(f_o)/len(f_o))
 	
-	log_string += "[real Mg : %f] [real Mn : %f] [real O : %f] [fake Mg : %f] [fake Mn : %f] [fake O : %f]" 
-	%(sum(r_mg)/len(r_mg), sum(r_mn)/len(r_mn), sum(r_o)/len(r_o),sum(f_mg)/len(f_mg), sum(f_mn)/len(f_mn), sum(f_o)/len(f_o))
+
 
 
         if epoch ==0:
