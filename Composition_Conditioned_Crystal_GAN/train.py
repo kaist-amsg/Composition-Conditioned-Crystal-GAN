@@ -307,7 +307,7 @@ def main():
             r_mg.append(cat_loss_mg_real2.item())
             r_mn.append(cat_loss_mn_real2.item())
             r_o.append(cat_loss_o_real2.item())
-            r_c.append(cell_loss_real.item())
+#            r_c.append(cell_loss_real.item())
             
             
             D_real_cat = D_real - cat_loss_real
@@ -354,7 +354,7 @@ def main():
                 f_mg.append(cat_loss_mg_fake2.item())
                 f_mn.append(cat_loss_mn_fake2.item())
                 f_o.append(cat_loss_o_fake2.item())
-                f_c.append(cell_fake.item())
+#                f_c.append(cell_fake.item())
                 G = G.mean()
                 
                 cat_loss_fake = 0.0*(cat_loss_mg_fake + cat_loss_mn_fake + cat_loss_o_fake) + 0.3*(cat_loss_mg_fake2 + cat_loss_mn_fake2 + cat_loss_o_fake2)
@@ -381,7 +381,11 @@ def main():
         log_string = "[Epoch %d/%d] [Batch %d/%d] [W loss: %f] "  % (epoch, opt.n_epochs, j, len(dataloader),
                                                             sum(w)/len(w)) 
         
-        log_string += "[real Mg : %f] [real Mn : %f] [real O : %f] [real cell loss : %f] [fake Mg : %f] [fake Mn : %f] [fake O : %f] [fake cell loss : %f]" %(sum(r_mg)/len(r_mg), sum(r_mn)/len(r_mn), sum(r_o)/len(r_o),sum(r_c)/len(r_c),sum(f_mg)/len(f_mg), sum(f_mn)/len(f_mn), sum(f_o)/len(f_o), sum(f_c)/len(f_c))
+#        log_string += "[real Mg : %f] [real Mn : %f] [real O : %f] [real cell loss : %f] [fake Mg : %f] [fake Mn : %f] [fake O : %f] [fake cell loss : %f]" 
+#	%(sum(r_mg)/len(r_mg), sum(r_mn)/len(r_mn), sum(r_o)/len(r_o),sum(r_c)/len(r_c),sum(f_mg)/len(f_mg), sum(f_mn)/len(f_mn), sum(f_o)/len(f_o), sum(f_c)/len(f_c))
+	
+	log_string += "[real Mg : %f] [real Mn : %f] [real O : %f] [fake Mg : %f] [fake Mn : %f] [fake O : %f]" 
+	%(sum(r_mg)/len(r_mg), sum(r_mn)/len(r_mn), sum(r_o)/len(r_o),sum(f_mg)/len(f_mg), sum(f_mn)/len(f_mn), sum(f_o)/len(f_o))
 
 
         if epoch ==0:
